@@ -2,6 +2,7 @@ const request = require("request-promise");
 const cheerio = require("cheerio");
 const chalk = require("chalk");
 const cron = require("node-cron");
+const express = require("express");
 const { filter } = require("cheerio/lib/api/traversing");
 
 const data = {
@@ -13,6 +14,9 @@ const data = {
 
 console.log(chalk.yellowBright("---LOGGING STARTS HERE---"));
 
+const app = express();
+
+const port = process.env.PORT || 3000;
 // request(
 //   "https://www.infinbank.com/uz/private/exchange-rates/",
 //   (error, response, html) => {
@@ -73,14 +77,22 @@ cron.schedule("20,40,59 * * * * *", () => {
   });
 });
 
-function normalize(item) {
-  item = item.split("");
-  for (let i = 0; i < item.length; i++) {
-    if (item[i] === "=" || item[i] === " ") {
-      item.splice(i, 1);
-      i -= 1;
-    }
-  }
+// function normalize(item) {
+//   item = item.split("");
+//   for (let i = 0; i < item.length; i++) {
+//     if (item[i] === "=" || item[i] === " ") {
+//       item.splice(i, 1);
+//       i -= 1;
+//     }
+//   }
 
-  return parseFloat(item.join(""));
-}
+//   return parseFloat(item.join(""));
+// }
+
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
+app.listen(port, () => {
+  console.log(chalk.blueBright("Server is running..."));
+});
