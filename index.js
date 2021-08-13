@@ -86,6 +86,8 @@ async function main() {
                   .insertOne(storeData);
                 if (result.acknowledged) {
                   console.log("Successfully inserted\n");
+                } else {
+                  console.log(chalk.redBright("X Insert failed X"));
                 }
               }
             }
