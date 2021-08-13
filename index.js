@@ -1,3 +1,4 @@
+require("dotenv").config();
 const request = require("request-promise");
 const cheerio = require("cheerio");
 const chalk = require("chalk");
@@ -8,8 +9,8 @@ const express = require("express");
 console.log(chalk.yellowBright("---LOGGING STARTS HERE---"));
 
 const port = process.env.PORT || 3000;
-const url =
-  "mongodb+srv://admin-asadbek:admin@cluster0.zyrmo.mongodb.net/rateDB?retryWrites=true&w=majority";
+const url = process.env.MONGODB || process.env.LOCAL_MONGODB;
+
 let status = true;
 let oldData = "$44,761.21$3,118.08$384.33";
 
@@ -21,64 +22,81 @@ const client = new MongoClient(url, {
 const app = express();
 
 async function main() {
-  await client.connect(async (err) => {
-    if (err) {
-      console.log(err);
-    }
+  try {
+    await client.connect(async (err) => {
+      if (err) {
+        console.log(err);
+      }
 
-    const db = client.db("rateDB");
+      const db = client.db("rateDB");
 
-    if (status) {
-      cron.schedule("* * * * * *", () => {
-        request("https://coinmarketcap.com/", async (error, response, html) => {
-          if (error) {
-            console.log(error);
-          }
+      if (status) {
+        cron.schedule("20,40,59 * * * * *", () => {
+          request(
+            "https://coinmarketcap.com/",
+            async (error, response, html) => {
+              if (error) {
+                console.log(error);
+              }
 
-          const date = new Date();
-          const { day, month, year, hour, minute, second } = normalizeTime(
-            date.getDay(),
-            date.getMonth(),
-            date.getFullYear(),
-            date.getHours(),
-            date.getMinutes(),
-            date.getSeconds()
-          );
+              const date = new Date();
+              const { day, month, year, hour, minute, second } = normalizeTime(
+                date.getDay(),
+                date.getMonth(),
+                date.getFullYear(),
+                date.getHours(),
+                date.getMinutes(),
+                date.getSeconds()
+              );
 
-          const time = `${day}/${month}/${year}, ${hour}:${minute}:${second}`;
+              const time = `${day}/${month}/${year}, ${hour}:${minute}:${second}`;
 
-          const $ = cheerio.load(html);
+              const $ = cheerio.load(html);
 
-          const bitcoin = $(".sc-131di3y-0")["0"].children[0].children[0].data;
-          const ethereum = $(".sc-131di3y-0")["1"].children[0].children[0].data;
-          const binance = $(".sc-131di3y-0")["2"].children[0].children[0].data;
-          let newData = bitcoin + ethereum + binance;
-
-          if (newData !== oldData) {
-            oldData = newData;
-            const storeData = {
-              "Bitcoin BTC": bitcoin,
-              "Ethereum ETH": ethereum,
-              "Binance Coin BNB": binance,
-              Date: time,
-            };
-            console.log(
-              `Bitcoin BTC\tEthereum ETH\tBinance Coin BNB\t${time}\n${bitcoin}\t${ethereum}\t${binance}\n`
-            );
-            const result = await db
-              .collection("cryptocurrency")
-              .insertOne(storeData);
-            if (result.acknowledged) {
-              console.log("Successfully inserted\n");
+              const bitcoin =
+                $(".sc-131di3y-0")["0"].children[0].children[0].data;
+              const ethereum =
+                $(".sc-131di3y-0")["1"].children[0].children[0].data;
+              const binance =
+                $(".sc-131di3y-0")["2"].children[0].children[0].data;
+              let bitcoinNumber;
+              let ethereumNumber;
+              let binanceNumber;
+              let newData = bitcoin + ethereum + binance;
+              console.log(bitcoinNumber, ethereumNumber, binanceNumber);
+              if (newData !== oldData) {
+                oldData = newData;
+                bitcoinNumber = normalizeNumber(bitcoin);
+                ethereumNumber = normalizeNumber(ethereum);
+                binanceNumber = normalizeNumber(binance);
+                const storeData = {
+                  "Bitcoin BTC": bitcoin,
+                  bitcoin: bitcoinNumber,
+                  "Ethereum ETH": ethereum,
+                  ethereum: ethereumNumber,
+                  "Binance Coin BNB": binance,
+                  "binance coin": binanceNumber,
+                  Date: time,
+                };
+                console.log(
+                  `Bitcoin BTC\tEthereum ETH\tBinance Coin BNB\t${time}\n${bitcoin}\t${ethereum}\t${binance}\n`
+                );
+                const result = await db
+                  .collection("cryptocurrency")
+                  .insertOne(storeData);
+                if (result.acknowledged) {
+                  console.log("Successfully inserted\n");
+                }
+              }
             }
-          }
+          );
         });
-      });
-    }
-  });
+      }
+    });
+  } catch (err) {
+    console.log(err);
+  }
 }
-
-main();
 
 app.get("/start", (req, res) => {
   status = true;
@@ -140,17 +158,17 @@ function normalizeTime(day, month, year, hour, minute, second) {
   };
 }
 
-// function normalize(item) {
-//   item = item.split("");
-//   for (let i = 0; i < item.length; i++) {
-//     if (item[i] === "=" || item[i] === " ") {
-//       item.splice(i, 1);
-//       i -= 1;
-//     }
-//   }
+function normalizeNumber(item) {
+  item = item.split("");
+  for (let i = 0; i < item.length; i++) {
+    if (item[i] === "," || item[i] === " " || item[i] === "$") {
+      item.splice(i, 1);
+      i -= 1;
+    }
+  }
 
-//   return parseFloat(item.join(""));
-// }
+  return parseFloat(item.join(""));
+}
 
 // request(
 //   "https://www.infinbank.com/uz/private/exchange-rates/",
