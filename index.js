@@ -63,7 +63,6 @@ async function main() {
               let ethereumNumber;
               let binanceNumber;
               let newData = bitcoin + ethereum + binance;
-              console.log(bitcoinNumber, ethereumNumber, binanceNumber);
               if (newData !== oldData) {
                 oldData = newData;
                 bitcoinNumber = normalizeNumber(bitcoin);
